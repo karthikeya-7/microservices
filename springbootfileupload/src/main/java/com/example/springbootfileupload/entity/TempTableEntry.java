@@ -10,6 +10,7 @@ public class TempTableEntry {
     private Long id;
     
     private String columnName;
+    private String EmailId;
     private String phoneNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -32,6 +33,15 @@ public class TempTableEntry {
     public void setColumnName(String columnName) {
         this.columnName = columnName;
     }
+
+    public String getEmailId() {
+        return EmailId;
+    }
+
+    public void setEmailId(String EmailId) {
+        this.EmailId = EmailId;
+    }
+
 
     public String getPhoneNumber() {
         return phoneNumber;

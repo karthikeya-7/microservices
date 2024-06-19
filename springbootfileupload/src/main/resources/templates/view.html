@@ -75,6 +75,7 @@
             <thead>
                 <tr>
                     <th>Column Name</th>
+                    <th>EmailId</th>
                     <th>Phone Number</th>
                     <!-- Add more headers as needed -->
                 </tr>
@@ -82,6 +83,7 @@
             <tbody>
                 <tr th:each="entry : ${tempTableEntries}">
                     <td th:text="${entry.columnName}">Column Name</td>
+                    <td th:text="${entry.EmailId}">EmailId</td>
                     <td th:text="${entry.phoneNumber}">Phone Number</td>
                     <!-- Add more columns as needed -->
                 </tr>

@@ -69,8 +69,9 @@ public class FileUploadService {
 
         for (Row row : sheet) {
             TempTableEntry entry = new TempTableEntry();
-            entry.setColumnName(getStringValueFromCell(row.getCell(0))); // Example: assuming column 1 is String
-            entry.setPhoneNumber(getStringValueFromCell(row.getCell(1))); // Example: assuming column 2 is PhoneNumber
+            entry.setColumnName(getStringValueFromCell(row.getCell(0)));
+            entry.setEmailId(getStringValueFromCell(row.getCell(1))); // Example: assuming column 1 is String
+            entry.setPhoneNumber(getStringValueFromCell(row.getCell(2))); // Example: assuming column 2 is PhoneNumber
             // Add more fields as needed
 
             entries.add(entry);
