@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Download File</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Download File</h1>
+    <div th:if="${error}" class="error" th:text="${error}"></div>
+    
+    <p>Click below to download the CSV file:</p>
+    <form th:action="@{/download/{id}(id=${fileId})}" method="get">
+        <button type="submit">Download CSV</button>
+    </form>
+    
+    <p><a th:href="@{/}" class="btn">Back to Upload Files</a></p>
+</body>
+</html>
