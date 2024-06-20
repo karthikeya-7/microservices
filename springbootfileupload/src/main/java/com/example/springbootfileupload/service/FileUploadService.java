@@ -7,6 +7,7 @@ import com.example.springbootfileupload.repository.UploadedFileRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
@@ -27,6 +28,7 @@ public class FileUploadService {
 
     private static final String UPLOAD_DIR = "./uploads/";
 
+    @Transactional(rollbackFor = Exception.class)
     public UploadedFile uploadFile(MultipartFile multipartFile, String originalFileName) throws IOException {
         UploadedFile uploadedFile = new UploadedFile();
         uploadedFile.setOriginalFileName(originalFileName);
@@ -57,9 +59,14 @@ public class FileUploadService {
             } else {
                 uploadedFile.setStatus("File uploaded and converted to CSV successfully");
 
+                // Save the uploadedFile to get its ID
+                uploadedFile = uploadedFileRepository.save(uploadedFile);
+
                 // Associate each entry with the uploaded file and save them
-                tempTableEntries.forEach(entry -> entry.setUploadedFile(uploadedFile));
-                tempTableRepository.saveAll(tempTableEntries);
+                for (TempTableEntry entry : tempTableEntries) {
+                    entry.setUploadedFile(uploadedFile);
+                    tempTableRepository.save(entry);
+                }
             }
         } catch (IOException e) {
             uploadedFile.setTimestampFileName("");
