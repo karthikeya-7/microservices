@@ -14,8 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class FileUploadService {
@@ -29,43 +28,57 @@ public class FileUploadService {
     private static final String UPLOAD_DIR = "./uploads/";
 
     public UploadedFile uploadFile(MultipartFile multipartFile, String originalFileName) throws IOException {
-        boolean isDuplicate = checkForDuplicates(multipartFile);
-        if (isDuplicate) {
-            UploadedFile failedUpload = new UploadedFile();
-            failedUpload.setOriginalFileName(originalFileName);
-            failedUpload.setTimestampFileName("");
-            failedUpload.setStatus("Failed: Duplicate file found.");
-            return failedUpload;
-        }
-
-        String timestampFileName = LocalDateTime.now().toString().replace(":", "-") + ".csv";
-        Path path = Paths.get(UPLOAD_DIR + timestampFileName);
-        Files.copy(multipartFile.getInputStream(), path);
-
-        List<TempTableEntry> tempTableEntries = convertExcelToTempTableEntries(path.toFile());
-
         UploadedFile uploadedFile = new UploadedFile();
         uploadedFile.setOriginalFileName(originalFileName);
-        uploadedFile.setTimestampFileName(timestampFileName);
-        uploadedFile.setStatus("File uploaded and converted to CSV successfully");
-        uploadedFileRepository.save(uploadedFile);
 
-        tempTableEntries.forEach(entry -> entry.setUploadedFile(uploadedFile));
-        tempTableRepository.saveAll(tempTableEntries);
+        // Convert Excel file to a list of entries
+        List<TempTableEntry> tempTableEntries;
+        try {
+            tempTableEntries = convertExcelToTempTableEntries(multipartFile);
+        } catch (IOException e) {
+            uploadedFile.setTimestampFileName("");
+            uploadedFile.setStatus("Failed: Error processing Excel file.");
+            uploadedFileRepository.save(uploadedFile);
+            return uploadedFile;
+        }
+
+        // Check for duplicates within the extracted content
+        boolean hasDuplicates = checkForDuplicatesInContent(tempTableEntries);
+
+        // Generate a timestamped file name and save the file
+        String timestampFileName = LocalDateTime.now().toString().replace(":", "-") + ".csv";
+        Path path = Paths.get(UPLOAD_DIR + timestampFileName);
+        try {
+            Files.copy(multipartFile.getInputStream(), path);
+            uploadedFile.setTimestampFileName(timestampFileName);
+
+            if (hasDuplicates) {
+                uploadedFile.setStatus("File uploaded but contains duplicate entries.");
+            } else {
+                uploadedFile.setStatus("File uploaded and converted to CSV successfully");
+
+                // Associate each entry with the uploaded file and save them
+                tempTableEntries.forEach(entry -> entry.setUploadedFile(uploadedFile));
+                tempTableRepository.saveAll(tempTableEntries);
+            }
+        } catch (IOException e) {
+            uploadedFile.setTimestampFileName("");
+            uploadedFile.setStatus("Failed: Error saving file.");
+            uploadedFileRepository.save(uploadedFile);
+            return uploadedFile;
+        }
+
+        // Save the uploaded file metadata
+        uploadedFileRepository.save(uploadedFile);
 
         return uploadedFile;
     }
 
-    private boolean checkForDuplicates(MultipartFile file) {
-        // Implement duplicate check logic here, e.g., by file hash or name
-        return false; // Placeholder; replace with actual logic
-    }
-
-    private List<TempTableEntry> convertExcelToTempTableEntries(File excelFile) throws IOException {
-        Workbook workbook = WorkbookFactory.create(excelFile);
+    private List<TempTableEntry> convertExcelToTempTableEntries(MultipartFile multipartFile) throws IOException {
+        Workbook workbook = WorkbookFactory.create(multipartFile.getInputStream());
         Sheet sheet = workbook.getSheetAt(0);
 
-        List<TempTableEntry> entries = new java.util.ArrayList<>();
+        List<TempTableEntry> entries = new ArrayList<>();
 
         for (Row row : sheet) {
             TempTableEntry entry = new TempTableEntry();
@@ -80,6 +93,17 @@ public class FileUploadService {
         workbook.close();
 
         return entries;
+    }
+
+    private boolean checkForDuplicatesInContent(List<TempTableEntry> entries) {
+        Set<String> uniqueEntries = new HashSet<>();
+        for (TempTableEntry entry : entries) {
+            String uniqueKey = entry.getColumnName() + "|" + entry.getEmailId() + "|" + entry.getPhoneNumber();
+            if (!uniqueEntries.add(uniqueKey)) {
+                return true; // Duplicate found
+            }
+        }
+        return false; // No duplicates found
     }
 
     private String getStringValueFromCell(Cell cell) {
