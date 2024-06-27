@@ -1,9 +1,6 @@
 package com.example.springbootfileupload.entity;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
 
 @Entity
 public class UploadedFile {
@@ -11,11 +8,27 @@ public class UploadedFile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
     private String originalFileName;
     private String timestampFileName;
     private String status;
 
-    // Getters and setters
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    // Constructors, getters, and setters
+
+    public UploadedFile() {
+        // Default constructor
+    }
+
+    public UploadedFile(String originalFileName, String timestampFileName, String status, User user) {
+        this.originalFileName = originalFileName;
+        this.timestampFileName = timestampFileName;
+        this.status = status;
+        this.user = user;
+    }
 
     public Long getId() {
         return id;
@@ -47,5 +60,13 @@ public class UploadedFile {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }

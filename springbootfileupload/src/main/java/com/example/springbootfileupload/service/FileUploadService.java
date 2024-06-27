@@ -2,10 +2,13 @@ package com.example.springbootfileupload.service;
 
 import com.example.springbootfileupload.entity.TempTableEntry;
 import com.example.springbootfileupload.entity.UploadedFile;
+import com.example.springbootfileupload.entity.User;
 import com.example.springbootfileupload.repository.TempTableRepository;
 import com.example.springbootfileupload.repository.UploadedFileRepository;
+import com.example.springbootfileupload.repository.UserRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,7 +18,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class FileUploadService {
@@ -26,10 +33,17 @@ public class FileUploadService {
     @Autowired
     private TempTableRepository tempTableRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private static final String UPLOAD_DIR = "./uploads/";
 
     @Transactional(rollbackFor = Exception.class)
     public UploadedFile uploadFile(MultipartFile multipartFile, String originalFileName) throws IOException {
+        // Get the authenticated user
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByUsername(username);
+
         UploadedFile uploadedFile = new UploadedFile();
         uploadedFile.setOriginalFileName(originalFileName);
 
@@ -40,6 +54,7 @@ public class FileUploadService {
         } catch (IOException e) {
             uploadedFile.setTimestampFileName("");
             uploadedFile.setStatus("Failed: Error processing Excel file.");
+            uploadedFile.setUser(user);
             uploadedFileRepository.save(uploadedFile);
             return uploadedFile;
         }
@@ -53,6 +68,7 @@ public class FileUploadService {
         try {
             Files.copy(multipartFile.getInputStream(), path);
             uploadedFile.setTimestampFileName(timestampFileName);
+            uploadedFile.setUser(user);
 
             if (hasDuplicates) {
                 uploadedFile.setStatus("File uploaded but contains duplicate entries.");
@@ -71,6 +87,7 @@ public class FileUploadService {
         } catch (IOException e) {
             uploadedFile.setTimestampFileName("");
             uploadedFile.setStatus("Failed: Error saving file.");
+            uploadedFile.setUser(user);
             uploadedFileRepository.save(uploadedFile);
             return uploadedFile;
         }
@@ -130,7 +147,12 @@ public class FileUploadService {
     }
 
     public List<UploadedFile> getAllFiles() {
-        return uploadedFileRepository.findAll();
+        // Get the authenticated user
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByUsername(username);
+
+        // Fetch files belonging to the authenticated user
+        return uploadedFileRepository.findByUser(user);
     }
 
     public List<TempTableEntry> getTempTableEntriesByFileId(Long fileId) {
